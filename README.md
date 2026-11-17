@@ -2,6 +2,8 @@
 
 Site statique pour créer une affiche et un texte de publication à l'occasion de la Semaine mondiale de l'Entrepreneuriat 2026 au Bénin, organisée par OKAY Students.
 
+Adresse : [gew-okay-students.netlify.app](https://gew-okay-students.netlify.app/)
+
 L'affiche est au format carré (1080 × 1080), prêt pour Facebook, LinkedIn, Instagram et TikTok. Les logos et les textes officiels sont déjà en place : chaque étudiant ajoute sa photo, la cadre, renseigne son nom, sa filière, son année et son université, puis télécharge le visuel. Le texte de publication, proposé en trois versions, reprend les cinq points demandés.
 
 Les photos restent dans le navigateur : rien n'est envoyé sur un serveur.
@@ -27,7 +29,7 @@ npm run dev
 - Commande de build : `npm run build`
 - Dossier publié : `dist`
 
-Le fichier `netlify.toml` est déjà en place. Après le déploiement, il est utile de remplacer les balises Open Graph (`og:url`, `og:image`) par l'adresse absolue du site, pour un aperçu correct sur WhatsApp et Facebook.
+Le fichier `netlify.toml` est déjà en place.
 
 ## Licence
 
