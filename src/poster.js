@@ -6,8 +6,8 @@ export const POSTER_SIZE = 1080;
 /** Reserved circular photo slot, in poster pixels. */
 export const SLOT = {
   cx: 540,
-  cy: 506,
-  diameter: 420,
+  cy: 535,
+  diameter: 478,
 };
 
 const COLORS = {
@@ -45,11 +45,25 @@ export function drawPoster(ctx, W, H, options) {
 
   drawBackground(ctx, W, H);
   drawLeaves(ctx, W, H, slot, u);
-  drawBanner(ctx, W, 136 * u, u);
-  drawLogoRow(ctx, W, 148 * u, 132 * u, u, logos);
+  drawBanner(ctx, W, 120 * u, u);
+  drawLogoRow(ctx, W, 132 * u, 148 * u, u, logos);
   drawPortrait(ctx, photo, crop, slot.cx, slot.cy, slot.diameter, u);
-  const afterIdentity = drawIdentity(ctx, W, u, student);
-  drawThemePill(ctx, W, afterIdentity + 26 * u, u);
+
+  const idPlan = planIdentity(ctx, W, u, student);
+  const pillPlan = planThemePill(ctx, W, u);
+  const midGap = 16 * u;
+  const photoBottom = slot.cy + slot.diameter / 2 + 5 * u;
+  const footerTop = H - 54 * u;
+  const minPhotoGap = 16 * u;
+  const minFooterGap = 16 * u;
+  const block = idPlan.height + midGap + pillPlan.boxH;
+  const available = footerTop - photoBottom - minPhotoGap - minFooterGap;
+  let photoGap = minPhotoGap;
+  if (available > block) {
+    photoGap += (available - block) * 0.5;
+  }
+  const afterIdentity = drawIdentity(ctx, W, u, student, photoBottom + photoGap, idPlan);
+  drawThemePill(ctx, W, afterIdentity + midGap, u, pillPlan);
   drawFooter(ctx, W, H, u);
   drawFlagStripe(ctx, H - 14 * u, 14 * u, W);
 }
@@ -79,8 +93,8 @@ function drawBanner(ctx, W, h, u) {
   ctx.font = `700 ${20 * u}px Montserrat`;
   fillTextSpaced(ctx, dates, W / 2, h * 0.7, 2.6 * u);
 
-  ctx.fillStyle = COLORS.gold;
-  ctx.fillRect(0, h - 2.5 * u, W, 2.5 * u);
+  ctx.fillStyle = COLORS.goldBright;
+  ctx.fillRect(0, h - 3 * u, W, 3 * u);
 }
 
 function drawDiamondPattern(ctx, x, y, w, h, u) {
@@ -120,17 +134,37 @@ function drawDiamondPattern(ctx, x, y, w, h, u) {
 
 function drawLogoRow(ctx, W, top, rowH, u, logos) {
   const midY = top + rowH / 2;
-  const gew = logos.gew;
-  const meb = logos.mebV || logos.meb;
-  const okay = logos.okay;
+  const targetH = 144 * u;
+  const items = [logos.gew, logos.mebV || logos.meb, logos.okay].filter(Boolean);
+  if (!items.length) return;
 
-  // Three columns, visually balanced
-  if (gew) drawContained(ctx, gew, W * 0.2, midY, 250 * u, 56 * u);
-  if (meb) drawContained(ctx, meb, W * 0.5, midY, 176 * u, 136 * u);
-  if (okay) drawContained(ctx, okay, W * 0.8, midY, 148 * u, 118 * u);
+  const sized = items.map((img) => {
+    const srcW = img.naturalWidth || img.width;
+    const srcH = img.naturalHeight || img.height;
+    const h = targetH;
+    const w = (srcW / srcH) * h;
+    return { img, w, h };
+  });
+
+  const totalW = sized.reduce((sum, it) => sum + it.w, 0);
+  const maxGap = 96 * u;
+  const minGap = 48 * u;
+  const sidePad = 56 * u;
+  const rawGap =
+    sized.length > 1
+      ? (W - sidePad * 2 - totalW) / (sized.length - 1)
+      : 0;
+  const gap = Math.max(minGap, Math.min(maxGap, rawGap));
+  const groupW = totalW + gap * Math.max(0, sized.length - 1);
+  let x = (W - groupW) / 2;
+  for (const it of sized) {
+    ctx.drawImage(it.img, x, midY - it.h / 2, it.w, it.h);
+    x += it.w + gap;
+  }
 }
 
 function drawLeaves(ctx, W, H, slot, u) {
+  const dy = slot.cy / u - 506;
   const left = [
     { x: 78, y: 400, len: 230, wid: 74, ang: -0.5, color: COLORS.leafSoft, blur: 7, a: 0.7 },
     { x: 36, y: 490, len: 200, wid: 62, ang: -0.08, color: COLORS.leaf, blur: 3, a: 0.58 },
@@ -158,18 +192,18 @@ function drawLeaves(ctx, W, H, slot, u) {
     ctx.save();
     ctx.filter = `blur(${14 * u}px)`;
     ctx.globalAlpha = blob.a;
-    const g = ctx.createRadialGradient(blob.x * u, blob.y * u, 0, blob.x * u, blob.y * u, blob.r * u);
+    const g = ctx.createRadialGradient(blob.x * u, (blob.y + dy) * u, 0, blob.x * u, (blob.y + dy) * u, blob.r * u);
     g.addColorStop(0, COLORS.leafSoft);
     g.addColorStop(1, "rgba(197,217,184,0)");
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(blob.x * u, blob.y * u, blob.r * u, 0, Math.PI * 2);
+    ctx.arc(blob.x * u, (blob.y + dy) * u, blob.r * u, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
 
   for (const leaf of [...left, ...right]) {
-    drawLeaf(ctx, leaf.x * u, leaf.y * u, leaf.len * u, leaf.wid * u, leaf.ang, leaf.color, leaf.blur * u, leaf.a);
+    drawLeaf(ctx, leaf.x * u, (leaf.y + dy) * u, leaf.len * u, leaf.wid * u, leaf.ang, leaf.color, leaf.blur * u, leaf.a);
   }
 }
 
@@ -203,10 +237,14 @@ function drawLeaf(ctx, x, y, length, width, angle, color, blur, alpha) {
 function drawPortrait(ctx, photo, crop, cx, cy, diameter, u) {
   const r = diameter / 2;
 
+  // Soft shadow under a single gold ring — no second (green) frame
   ctx.save();
+  ctx.shadowColor = "rgba(11, 58, 44, 0.22)";
+  ctx.shadowBlur = 18 * u;
+  ctx.shadowOffsetY = 5 * u;
   ctx.beginPath();
-  ctx.arc(cx, cy + 6 * u, r, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(11, 58, 44, 0.10)";
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = COLORS.slotFill;
   ctx.fill();
   ctx.restore();
 
@@ -243,19 +281,18 @@ function drawPortrait(ctx, photo, crop, cx, cy, diameter, u) {
     ctx.restore();
   }
 
-  // Thin dashed gold ring
+  // Single fine gold ring
   ctx.save();
   ctx.beginPath();
-  ctx.arc(cx, cy, r + 8 * u, 0, Math.PI * 2);
-  ctx.strokeStyle = COLORS.gold;
-  ctx.lineWidth = 2.2 * u;
-  ctx.setLineDash([5.5 * u, 4.2 * u]);
+  ctx.arc(cx, cy, r + 2.5 * u, 0, Math.PI * 2);
+  ctx.strokeStyle = COLORS.goldBright;
+  ctx.lineWidth = 2.4 * u;
   ctx.lineCap = "round";
   ctx.stroke();
   ctx.restore();
 }
 
-function drawIdentity(ctx, W, u, student) {
+function planIdentity(ctx, W, u, student) {
   const name = displayName(student);
   const nameIsPlaceholder = !name;
   const nameText = name || "Votre nom";
@@ -268,15 +305,8 @@ function drawIdentity(ctx, W, u, student) {
     : metaParts.join("  ·  ");
 
   const contentW = 920 * u;
-  let y = 738 * u;
-
-  // Name: prefer a single line, shrink, wrap only if needed
   const nameMax = 50 * u;
   const nameMin = 28 * u;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  ctx.fillStyle = nameIsPlaceholder ? "rgba(11,58,44,0.38)" : COLORS.name;
-
   const nameFit = fitSingleLine(ctx, nameText, contentW, nameMax, nameMin, 900, "Montserrat");
   let nameLines;
   let nameSize;
@@ -288,19 +318,11 @@ function drawIdentity(ctx, W, u, student) {
     ctx.font = `900 ${nameSize}px Montserrat`;
     nameLines = wrapText(ctx, nameText, contentW).slice(0, 2);
   }
-  ctx.font = `900 ${nameSize}px Montserrat`;
-  const nameTrack = nameLines.length === 1 && nameSize > nameMax * 0.84
-    ? nameSize * 0.02
-    : 0;
-  for (const line of nameLines) {
-    fillTextSpaced(ctx, line, W / 2, y, nameTrack);
-    y += nameSize * 1.08;
-  }
+  const nameTrack =
+    nameLines.length === 1 && nameSize > nameMax * 0.84 ? nameSize * 0.02 : 0;
 
-  y += 10 * u;
   const metaMax = 19 * u;
   const metaMin = 14 * u;
-  ctx.fillStyle = metaIsPlaceholder ? "rgba(63,92,76,0.5)" : COLORS.muted;
   const metaFit = fitSingleLine(ctx, metaText, contentW, metaMax, metaMin, 500, "Montserrat");
   let metaLines;
   let metaSize;
@@ -312,10 +334,47 @@ function drawIdentity(ctx, W, u, student) {
     ctx.font = `500 ${metaSize}px Montserrat`;
     metaLines = wrapText(ctx, metaText, contentW).slice(0, 2);
   }
-  ctx.font = `500 ${metaSize}px Montserrat`;
-  for (const line of metaLines) {
+
+  const height =
+    nameLines.length * nameSize * 1.08 +
+    10 * u +
+    metaLines.length * metaSize * 1.28 +
+    10 * u +
+    22 * u;
+
+  return {
+    nameText,
+    nameIsPlaceholder,
+    nameLines,
+    nameSize,
+    nameTrack,
+    metaText,
+    metaIsPlaceholder,
+    metaLines,
+    metaSize,
+    height,
+  };
+}
+
+function drawIdentity(ctx, W, u, student, top, plan) {
+  const layout = plan || planIdentity(ctx, W, u, student);
+  let y = top;
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = layout.nameIsPlaceholder ? "rgba(11,58,44,0.38)" : COLORS.name;
+  ctx.font = `900 ${layout.nameSize}px Montserrat`;
+  for (const line of layout.nameLines) {
+    fillTextSpaced(ctx, line, W / 2, y, layout.nameTrack);
+    y += layout.nameSize * 1.08;
+  }
+
+  y += 10 * u;
+  ctx.fillStyle = layout.metaIsPlaceholder ? "rgba(63,92,76,0.5)" : COLORS.muted;
+  ctx.font = `500 ${layout.metaSize}px Montserrat`;
+  for (const line of layout.metaLines) {
     ctx.fillText(line, W / 2, y);
-    y += metaSize * 1.28;
+    y += layout.metaSize * 1.28;
   }
 
   y += 10 * u;
@@ -325,14 +384,19 @@ function drawIdentity(ctx, W, u, student) {
   return y + 22 * u;
 }
 
-function drawThemePill(ctx, W, top, u) {
+function planThemePill(ctx, W, u) {
   const padX = 78 * u;
-  const boxX = padX;
   const boxW = W - padX * 2;
   const themeSize = 17 * u;
   ctx.font = `600 italic ${themeSize}px Montserrat`;
   const lines = wrapQuotedBalanced(ctx, THEME, Math.min(700 * u, boxW - 100 * u));
   const boxH = lines.length * themeSize * 1.32 + 28 * u;
+  return { padX, boxW, themeSize, lines, boxH };
+}
+
+function drawThemePill(ctx, W, top, u, plan) {
+  const { padX, boxW, themeSize, lines, boxH } = plan || planThemePill(ctx, W, u);
+  const boxX = padX;
   const cap = 16 * u;
   const r = boxH / 2;
 
